@@ -10,7 +10,7 @@ const ytdl = require('ytdl-core');
 
 // **ATENÇÃO**: Cole a sua chave da API da AssemblyAI aqui!
 const client = new AssemblyAI({
-  apiKey: "b0986337a8bf4f27bb30c9676f072776", 
+  apiKey: "185601bafe7545b4a78a40d08caa5278", 
 });
 
 // A função principal que será executada
