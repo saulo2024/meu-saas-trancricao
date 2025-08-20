@@ -8,4 +8,4 @@ node_modules
 # Ignorar a pasta de configuração da Vercel
 .vercel
 
-apiKey
+.apiKey
