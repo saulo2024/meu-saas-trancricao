@@ -1,0 +1,169 @@
+<!-- 
+  Arquivo: index.html
+  Este é o único arquivo que você precisa para o frontend.
+  Ele contém a estrutura (HTML), o estilo (Tailwind CSS) e a interatividade (JavaScript).
+-->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transcritor de Vídeo Rápido - MVP</title>
+    <!-- Carregando o Tailwind CSS para um design moderno e rápido -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Um pequeno estilo customizado para a animação de loading */
+        .loader {
+            border-top-color: #3498db;
+            -webkit-animation: spinner 1.5s linear infinite;
+            animation: spinner 1.5s linear infinite;
+        }
+        @-webkit-keyframes spinner {
+            0% { -webkit-transform: rotate(0deg); }
+            100% { -webkit-transform: rotate(360deg); }
+        }
+        @keyframes spinner {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans flex items-center justify-center min-h-screen">
+
+    <div class="container mx-auto p-4 max-w-2xl">
+        <div class="bg-white rounded-xl shadow-lg p-6 md:p-8">
+            
+            <!-- Cabeçalho -->
+            <div class="text-center mb-8">
+                <h1 class="text-3xl md:text-4xl font-bold text-gray-800">Transcritor de Vídeo</h1>
+                <p class="text-gray-500 mt-2">Cole um link do YouTube abaixo para converter o áudio em texto.</p>
+            </div>
+
+            <!-- Formulário de Submissão -->
+            <form id="transcribe-form" class="space-y-4">
+                <div>
+                    <label for="youtube-url" class="sr-only">Link do YouTube</label>
+                    <input 
+                        type="url" 
+                        id="youtube-url" 
+                        placeholder="https://www.youtube.com/watch?v=..."
+                        required
+                        class="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+                    >
+                </div>
+                <button 
+                    type="submit" 
+                    id="submit-button"
+                    class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-200 flex items-center justify-center"
+                >
+                    <!-- O spinner de loading será inserido aqui pelo JS -->
+                    <span id="button-text">Transcrever Vídeo</span>
+                </button>
+            </form>
+
+            <!-- Área de Resultados -->
+            <div id="result-container" class="mt-8 hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold text-gray-800">Transcrição:</h2>
+                    <button id="copy-button" class="bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300 transition duration-200">
+                        Copiar
+                    </button>
+                </div>
+                <div id="transcription-output" class="w-full h-64 p-4 bg-gray-50 border rounded-lg overflow-y-auto whitespace-pre-wrap text-gray-700">
+                    <!-- O texto transcrito aparecerá aqui -->
+                </div>
+            </div>
+            
+            <!-- Área de Erro -->
+            <div id="error-container" class="mt-6 text-center text-red-600 font-medium hidden"></div>
+
+        </div>
+        <footer class="text-center mt-6 text-gray-500 text-sm">
+            <p>MVP de um Micro-SaaS.</p>
+        </footer>
+    </div>
+
+    <script>
+        // Lógica do Frontend
+        const form = document.getElementById('transcribe-form');
+        const urlInput = document.getElementById('youtube-url');
+        const submitButton = document.getElementById('submit-button');
+        const buttonText = document.getElementById('button-text');
+        
+        const resultContainer = document.getElementById('result-container');
+        const transcriptionOutput = document.getElementById('transcription-output');
+        const copyButton = document.getElementById('copy-button');
+        
+        const errorContainer = document.getElementById('error-container');
+
+        // Função para gerenciar o estado de loading
+        function setLoading(isLoading) {
+            if (isLoading) {
+                submitButton.disabled = true;
+                buttonText.textContent = 'Processando...';
+                // Adiciona um spinner visual
+                const spinner = document.createElement('div');
+                spinner.className = 'loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-6 w-6 mr-3';
+                submitButton.prepend(spinner);
+            } else {
+                submitButton.disabled = false;
+                buttonText.textContent = 'Transcrever Vídeo';
+                // Remove o spinner
+                const spinner = submitButton.querySelector('.loader');
+                if(spinner) {
+                    submitButton.removeChild(spinner);
+                }
+            }
+        }
+
+        // Evento de submissão do formulário
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const youtubeUrl = urlInput.value;
+
+            // Esconde resultados e erros antigos
+            resultContainer.classList.add('hidden');
+            errorContainer.classList.add('hidden');
+            setLoading(true);
+
+            try {
+                // Faz a chamada para a nossa API de backend (Serverless Function)
+                const response = await fetch('/api/transcribe', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ url: youtubeUrl }),
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Ocorreu um erro na transcrição.');
+                }
+
+                const data = await response.json();
+                
+                // Exibe o resultado
+                transcriptionOutput.textContent = data.text;
+                resultContainer.classList.remove('hidden');
+
+            } catch (error) {
+                // Exibe a mensagem de erro
+                errorContainer.textContent = `Erro: ${error.message}`;
+                errorContainer.classList.remove('hidden');
+            } finally {
+                setLoading(false);
+            }
+        });
+
+        // Funcionalidade do botão de copiar
+        copyButton.addEventListener('click', () => {
+            navigator.clipboard.writeText(transcriptionOutput.textContent);
+            copyButton.textContent = 'Copiado!';
+            setTimeout(() => {
+                copyButton.textContent = 'Copiar';
+            }, 2000);
+        });
+    </script>
+</body>
+</html>
