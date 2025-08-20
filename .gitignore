@@ -1,1 +1,9 @@
 .vercel
+# Ignorar a pasta de dependências
+node_modules
+
+# Ignorar ficheiros de ambiente com chaves secretas
+.env
+
+# Ignorar a pasta de configuração da Vercel
+.vercel

@@ -12,6 +12,7 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "assemblyai": "^4.15.0"
+    "assemblyai": "^4.15.0",
+    "ytdl-core": "^4.11.5"
   }
 }
