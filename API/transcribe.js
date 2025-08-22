@@ -1,70 +1,60 @@
 /*
-  Arquivo: /api/transcribe.js
-  Este é o nosso backend. Coloque este arquivo dentro de uma pasta chamada "api" na raiz do seu projeto.
-  A Vercel irá automaticamente transformá-lo em uma Serverless Function.
+  Arquivo: /api/transcribe.js - VERSÃO 3 COM DEPURAÇÃO AVANÇADA
 */
 
 // Importa as dependências que instalamos
 const { AssemblyAI } = require('assemblyai');
 const ytdl = require('ytdl-core');
 
-// **ATENÇÃO**: Cole a sua chave da API da AssemblyAI aqui!
+// **ATENÇÃO**: Este código pega a chave da API das "Environment Variables" da Vercel.
+// Certifique-se de que a variável ASSEMBLYAI_API_KEY foi criada corretamente no painel da Vercel.
 const client = new AssemblyAI({
   apiKey: process.env.ASSEMBLYAI_API_KEY,
 });
 
 // A função principal que será executada
 module.exports = async (req, res) => {
-  // O Vercel precisa disso para requisições do tipo OPTIONS (CORS)
+  console.log("[PASSO 1] A função /api/transcribe foi chamada.");
+
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
   
-  // Verifica se o método da requisição é POST
   if (req.method !== 'POST') {
+    console.error("[ERRO] Método não permitido. Era " + req.method);
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  // Pega a URL do corpo da requisição
   const { url } = req.body;
+  console.log("[PASSO 2] URL recebida do frontend:", url);
 
   if (!url || !ytdl.validateURL(url)) {
+    console.error("[ERRO] URL do YouTube é inválida ou não foi fornecida.");
     return res.status(400).json({ error: 'URL do YouTube inválida ou não fornecida.' });
   }
 
   try {
-    // Pega as informações do vídeo para obter a duração
-    const videoInfo = await ytdl.getInfo(url);
-    const durationInSeconds = parseInt(videoInfo.videoDetails.lengthSeconds);
-
-    // Limite para o MVP: não processar vídeos muito longos para não gastar a cota gratuita
-    if (durationInSeconds > 600) { // 10 minutos
-        return res.status(400).json({ error: 'O vídeo é muito longo. O limite para esta demonstração é de 10 minutos.' });
-    }
-
-    // Pega o stream de áudio do vídeo usando ytdl-core
+    console.log("[PASSO 3] A extrair o áudio do vídeo com ytdl-core...");
     const audioStream = ytdl(url, {
       filter: 'audioonly',
       quality: 'lowestaudio',
     });
+    console.log("[PASSO 4] Áudio extraído com sucesso. A enviar para a AssemblyAI...");
 
-    // Configura os parâmetros para a AssemblyAI
-    const params = {
-      audio: audioStream,
-    };
-
-    // Envia o áudio para a AssemblyAI e aguarda a transcrição
+    const params = { audio: audioStream };
     const transcript = await client.transcripts.transcribe(params);
+    console.log("[PASSO 5] Resposta recebida da AssemblyAI. Status:", transcript.status);
 
     if (transcript.status === 'error') {
+      console.error("[ERRO DA API] A AssemblyAI devolveu um erro:", transcript.error);
       return res.status(500).json({ error: transcript.error });
     }
 
-    // Retorna o texto da transcrição com sucesso
+    console.log("[SUCESSO] Transcrição concluída. A enviar texto de volta.");
     res.status(200).json({ text: transcript.text });
 
   } catch (error) {
-    console.error('Erro no processo de transcrição:', error);
-    res.status(500).json({ error: 'Falha ao processar a transcrição. Verifique o link do vídeo.' });
+    console.error('[ERRO GERAL] Ocorreu uma falha grave no bloco try/catch:', error);
+    res.status(500).json({ error: 'Falha crítica ao processar a transcrição.' });
   }
 };
